@@ -18,7 +18,7 @@ const Home: NextPage = () => {
   return (
     <>
       <Head>
-        <title>Expenses</title>
+        <title>Memory Lane</title>
         <link rel="icon" href="/favicon.ico" />
       </Head>
       {!username && <SignIn />}

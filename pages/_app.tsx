@@ -5,7 +5,6 @@ import { auth } from "../firebase/firebase";
 import { useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { UserContext } from "../context/userContext";
-import { BudgetsProvider } from "../context/BudgetsContext";
 
 function MyApp({ Component, pageProps }: AppProps) {
   const [userUid, setUserUid] = useState("");
@@ -26,10 +25,8 @@ function MyApp({ Component, pageProps }: AppProps) {
 
   return (
     <UserContext.Provider value={{ userUid, username }}>
-      <BudgetsProvider>
-        {userUid && <Navbar />}
-        <Component {...pageProps} />
-      </BudgetsProvider>
+      {userUid && <Navbar />}
+      <Component {...pageProps} />
     </UserContext.Provider>
   );
 }
