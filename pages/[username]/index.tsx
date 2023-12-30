@@ -49,9 +49,9 @@ const landingPage = () => {
           alert(error);
         },
         () => {
-          getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
-            setImgUrl(downloadURL);
-          });
+          //   getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+          //     setImgUrl(downloadURL);
+          //   });
         }
       );
     }
