@@ -6,6 +6,8 @@
     "start": "next start"
   },
   "dependencies": {
+    "@hello-pangea/dnd": "^16.5.0",
+    "compressorjs": "^1.2.1",
     "firebase": "^9.13.0",
     "next": "latest",
     "react": "18.2.0",
