@@ -21,7 +21,7 @@ interface Memory {
   uploadedUrl?: string;
 }
 
-const IMAGES_TO_UPLOAD = 25;
+const IMAGES_TO_UPLOAD = 5;
 
 const landingPage = () => {
   const router = useRouter();

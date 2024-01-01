@@ -13,7 +13,7 @@ const SignIn = () => {
     <section className="flex flex-col items-center min-h-screen w-full bg-background">
       <div className="flex flex-col items-center justify-center opacity-90 bg-dark m-auto min-h-[70vh] min-w-[70%]">
         <FaBrain className="h-32 w-32 text-orange1 mb-10 mt-[-5rem] text-pink" />
-        <h1 className="text-4xl font-bold text-gray2 mb-10 text-white">
+        <h1 className="text-4xl font-bold text-gray2 mb-10 text-white text-center">
           Welcome to Memory Lane
         </h1>
         <button
