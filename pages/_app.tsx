@@ -1,6 +1,5 @@
 import "../styles/globals.css";
 import type { AppProps } from "next/app";
-import Navbar from "../components/Navbar";
 import { auth } from "../firebase/firebase";
 import { useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
@@ -25,7 +24,6 @@ function MyApp({ Component, pageProps }: AppProps) {
 
   return (
     <UserContext.Provider value={{ userUid, username }}>
-      {userUid && <Navbar />}
       <Component {...pageProps} />
     </UserContext.Provider>
   );

@@ -10,6 +10,8 @@ import { storage } from "../../firebase/firebase";
 import { ref, getDownloadURL, uploadBytesResumable } from "firebase/storage";
 import Compressor from "compressorjs";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+import Head from "next/head";
+import ProgressBar from "../../components/ProgressBar";
 
 interface Memory {
   localImgUrl: string;
@@ -18,6 +20,8 @@ interface Memory {
   isUploaded: boolean;
   uploadedUrl?: string;
 }
+
+const IMAGES_TO_UPLOAD = 25;
 
 const landingPage = () => {
   const router = useRouter();
@@ -36,6 +40,13 @@ const landingPage = () => {
     const files = e.target?.files;
     if (!files || !files[0]) return;
     const newMemories: Memory[] = [];
+
+    // Make sure it's IMAGES_TO_UPLOAD images
+    if (files.length !== IMAGES_TO_UPLOAD) {
+      alert(`Please select ${IMAGES_TO_UPLOAD} images`);
+      return;
+    }
+
     // Loop through the files and append new items to the array
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
@@ -72,9 +83,15 @@ const landingPage = () => {
     setMemories(items);
   };
 
+  const [isUploading, setIsUploading] = useState(false);
+  const [numUploaded, setNumUploaded] = useState(0);
+
   const handleSubmit = async (e: any) => {
     e.preventDefault();
     if (memories.length === 0) return;
+
+    setIsUploading(true);
+    setNumUploaded(0);
 
     // Helper function to upload a memory
     const uploadMemory = async (memory: Memory) => {
@@ -93,6 +110,7 @@ const landingPage = () => {
               },
               () => {
                 getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+                  setNumUploaded((numUploaded) => numUploaded + 1);
                   resolve(downloadURL);
                 });
               }
@@ -123,64 +141,116 @@ const landingPage = () => {
     await setDoc(doc(db, "users", userUid), {
       memories: uploadedUrls,
     });
+
+    setIsUploading(false);
+
+    alert("Upload complete!");
   };
 
   return (
-    <section className="flex flex-col items-center  min-h-screen h-fit min-w-full pb-32 bg-gray2">
-      <h1 className="text-4xl md:text-6xl text-center font-bold text-gray pt-8 md:pt-12">
-        Memory Lane
-      </h1>
-      <h2 className="text-2xl md:text-4xl text-center font-bold text-gray pt-4 md:pt-8">
-        Welcome, {username}
-      </h2>
-      <VscSignOut
-        onClick={logOut}
-        className="text-gray h-8 w-8 md:h-12 md:w-12  md:cursor-pointer md:hover:scale-105 md:transition-transform"
-      />
-      <form onSubmit={handleSubmit} className="form">
-        <input type="file" multiple accept="image/*" onChange={onImageChange} />
-        {memories.length > 0 && (
-          <DragDropContext onDragEnd={onDragEnd}>
-            <Droppable droppableId="droppable">
-              {(provided, snapshot) => (
-                <div {...provided.droppableProps} ref={provided.innerRef}>
-                  {memories.map((memory, index) => (
-                    <Draggable
-                      key={memory.id}
-                      draggableId={memory.id}
-                      index={index}
-                    >
-                      {(provided, snapshot) => (
-                        <div
-                          ref={provided.innerRef}
-                          {...provided.draggableProps}
-                          {...provided.dragHandleProps}
-                        >
-                          <img
-                            key={index}
-                            src={memory.localImgUrl}
-                            alt="memory"
-                            className="object-cover w-64"
-                          />
-                        </div>
-                      )}
-                    </Draggable>
-                  ))}
-                  {provided.placeholder}
-                </div>
+    <>
+      <Head>
+        <title>Memory Lane - Upload</title>
+        <link rel="icon" href="/favicon.ico" />
+      </Head>
+      <section className="flex flex-col items-center  min-h-screen h-fit min-w-full pb-32 bg-background">
+        <h1 className="text-4xl md:text-6xl text-center font-bold  pt-8 md:pt-12 text-white">
+          Memory Lane
+        </h1>
+        <h2 className="text-2xl md:text-4xl text-center font-bold  pt-4 md:pt-8 text-white">
+          Welcome, {username}
+        </h2>
+        <VscSignOut
+          onClick={logOut}
+          className="text-red h-8 w-8 md:h-12 md:w-12  md:cursor-pointer md:hover:scale-105 md:transition-transform"
+        />
+        {isUploading ? (
+          <div className="flex flex-col justify-center align-middle mt-6">
+            <ProgressBar value={numUploaded} maxValue={memories.length} />
+            <p className="text-white text-center">
+              {numUploaded} / {memories.length} memories uploaded
+            </p>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="form">
+            {memories.length === 0 ? (
+              <p className="text-white text-center mt-8">
+                Please select {IMAGES_TO_UPLOAD} photos along a path you are
+                familiar with (eg: daily commute to school)
+              </p>
+            ) : (
+              <p className="text-white text-center mt-8">
+                Drag and drop the photos to the correct order
+              </p>
+            )}
+            <div className="w-full flex flex-col justify-center">
+              <input
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={onImageChange}
+                className="hidden"
+                id="fileInput"
+              />
+              <label
+                htmlFor="fileInput"
+                className="w-60 my-4 mx-auto cursor-pointer bg-blue text-white py-2 px-4 rounded inline-block text-center"
+              >
+                {memories.length !== IMAGES_TO_UPLOAD
+                  ? `Select ${IMAGES_TO_UPLOAD} images`
+                  : `Reselect ${IMAGES_TO_UPLOAD} images`}
+              </label>
+              {memories.length === IMAGES_TO_UPLOAD && (
+                <DragDropContext onDragEnd={onDragEnd}>
+                  <Droppable droppableId="droppable">
+                    {(provided, snapshot) => (
+                      <div
+                        {...provided.droppableProps}
+                        ref={provided.innerRef}
+                        className=""
+                      >
+                        {memories.map((memory, index) => (
+                          <Draggable
+                            key={memory.id}
+                            draggableId={memory.id}
+                            index={index}
+                          >
+                            {(provided, snapshot) => (
+                              <div
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                {...provided.dragHandleProps}
+                                className="flex justify-center align-middle mt-2"
+                              >
+                                <img
+                                  key={index}
+                                  src={memory.localImgUrl}
+                                  alt="memory"
+                                  className="object-cover w-64"
+                                />
+                              </div>
+                            )}
+                          </Draggable>
+                        ))}
+                        {provided.placeholder}
+                      </div>
+                    )}
+                  </Droppable>
+                </DragDropContext>
               )}
-            </Droppable>
-          </DragDropContext>
+              {memories.length > 0 && (
+                <button
+                  type="submit"
+                  className="w-60 m-auto mt-4 bg-green hover:bg-opacity-90 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline-blue active:bg-blue-800"
+                >
+                  Confirm
+                </button>
+              )}
+            </div>
+          </form>
         )}
-
-        <button
-          type="submit"
-          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-        >
-          Confirm
-        </button>
-      </form>
-    </section>
+      </section>
+    </>
   );
 };
 
