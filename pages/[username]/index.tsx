@@ -12,13 +12,15 @@ import Compressor from "compressorjs";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import Head from "next/head";
 import ProgressBar from "../../components/ProgressBar";
+import axios from "axios";
 
-interface Memory {
+export interface Memory {
   localImgUrl: string;
   file: File;
   id: string;
   isUploaded: boolean;
   uploadedUrl?: string;
+  base64?: string;
 }
 
 const IMAGES_TO_UPLOAD = 5;
@@ -38,6 +40,7 @@ const landingPage = () => {
   const onImageChange = (e: any) => {
     e.preventDefault();
     const files = e.target?.files;
+
     if (!files || !files[0]) return;
     const newMemories: Memory[] = [];
 
@@ -128,24 +131,93 @@ const landingPage = () => {
       memories.map(async (memory) => await uploadMemory(memory))
     );
 
+    // Convert a file to base64 string
+    const toBase64 = async (file: File) => {
+      return new Promise((resolve, reject) => {
+        const fileReader = new FileReader();
+
+        fileReader.readAsDataURL(file);
+
+        fileReader.onload = () => {
+          resolve(fileReader.result);
+        };
+
+        fileReader.onerror = (error) => {
+          reject(error);
+        };
+      });
+    };
+
+    // Map all memories with base64
+    const base64Memories = await Promise.all(
+      memories.map(async (memory) => await toBase64(memory.file))
+    );
+
     // Update memories with uploaded URLs
     setMemories((oldMemories: Memory[]) =>
       oldMemories.map((memory, index) => ({
         ...memory,
         uploadedUrl: uploadedUrls[index] as string | undefined,
         isUploaded: true,
+        base64: base64Memories[index] as string | undefined,
       }))
     );
 
     // Update database with uploaded URLs
     await setDoc(doc(db, "users", userUid), {
       memories: uploadedUrls,
+      base64: base64Memories,
     });
 
     setIsUploading(false);
 
-    alert("Upload complete!");
+    alert("Upload successful!");
+
+    inpaint(base64Memories as string[]);
   };
+
+  const [generatedMemories, setGeneratedMemories] = useState<string[]>([]);
+
+  const inpaint = async (base64Memories: string[]) => {
+    const api_key = "SG_519710365431f894";
+    const url = "https://api.segmind.com/v1/sd1.5-inpainting";
+
+    const data = {
+      prompt: "Add a banana",
+      negative_prompt: "Disfigured, cartoon, blurry, nude",
+      samples: 1,
+      image: base64Memories[0].substring(base64Memories[0].indexOf(",") + 1),
+      mask: "iVBORw0KGgoAAAANSUhEUgAAAgAAAAIACAYAAAD0eNT6AAAG3ElEQVR42uzWMQEAAAjDMMC/52GCj0RCr3aSAgB+GQkAwAAAAAYAADAAAIABAAAMAABgAAAAAwAAGAAAwAAAAAYAADAAAIABAAAMAABgAAAAAwAAGAAAwAAAgAEAAAwAAGAAAAADAAAYAADAAAAABgAAMAAAgAEAAAwAAGAAAAADAAAYAADAAAAABgAAMAAAgAEAAAMAABgAAMAAAAAGAAAwAACAAQAADAAAYAAAAAMAABgAAMAAAAAGAAAwAACAAQAADAAAYAAAAAMAAAYAADAAAIABAAAMAABgAAAAAwAAGAAAwAAAAAYAADAAAIABAAAMAABgAAAAAwAAGAAAwAAAAAYAAAwAAGAAAAADAAAYAADAAAAABgAAMAAAgAEAAAwAAGAAAAADAAAYAADAAAAABgAAMAAAgAEAAAwAABgACQDAAAAABgAAMAAAgAEAAAwAAGAAAAADAAAYAADAAAAABgAAMAAAgAEAAAwAAGAAAAADAAAYAADAAACAAQAADAAAYAAAAAMAABgAAMAAAAAGAAAwAACAAQAADAAAYAAAAAMAABgAAMAAAAAGAAAwAACAAQAAAwAAGAAAwAAAAAYAADAAAIABAAAMAABgAAAAAwAAGAAAwAAAAAYAADAAAIABAAAMAABgAAAAAwAABgAAMAAAgAEAAAwAAGAAAAADAAAYAADAAAAABgAAMAAAgAEAAAwAAGAAAAADAAAYAADAAAAABgAADAAAYAAAAAMAABgAAMAAAAAGAAAwAACAAQAADAAAYAAAAAMAABgAAMAAAAAGAAAwAACAAQAADAAAGAAJAMAAAAAGAAAwAACAAQAADAAAYAAAAAMAABgAAMAAAAAGAAAwAACAAQAADAAAYAAAAAMAABgAAMAAAIABAAAMAABgAAAAAwAAGAAAwAAAAAYAADAAAIABAAAMAABgAAAAAwAAGAAAwAAAAAYAADAAAIABAAADAAAYAADAAAAABgAAMAAAgAEAAAwAAGAAAAADAAAYAADAAAAABgAAMAAAgAEAAAwAAGAAAAADAAAGAAAwAACAAQAADAAAYAAAAAMAABgAAMAAAAAGAAAwAACAAQAADAAAYAAAAAMAABgAAMAAAAAGAAAMAABgAAAAAwAAGAAAwAAAAAYAADAAAIABAAAMAABgAAAAAwAAGAAAwAAAAAYAADAAAIABAAAMAAAYAAkAwAAAAAYAADAAAIABAAAMAABgAAAAAwAAGAAAwAAAAAYAADAAAIABAAAMAABgAAAAAwAAGAAAwAAAgAEAAAwAAGAAAAADAAAYAADAAAAABgAAMAAAgAEAAAwAAGAAAAADAAAYAADAAAAABgAAMAAAgAEAAAMAABgAAMAAAAAGAAAwAACAAQAADAAAYAAAAAMAABgAAMAAAAAGAAAwAACAAQAADAAAYAAAAAMAAAYAADAAAIABAAAMAABgAAAAAwAAGAAAwAAAAAYAADAAAIABAAAMAABgAAAAAwAAGAAAwAAAAAYAAAwAAGAAAAADAAAYAADAAAAABgAAMAAAgAEAAAwAAGAAAAADAAAYAADAAAAABgAAMAAAgAEAAAwAABgACQDAAAAABgAAMAAAgAEAAAwAAGAAAAADAAAYAADAAAAABgAAMAAAgAEAAAwAAGAAAAADAAAYAADAAACAAQAADAAAYAAAAAMAABgAAMAAAAAGAAAwAACAAQAADAAAYAAAAAMAABgAAMAAAAAGAAAwAACAAQAAAwAAGAAAwAAAAAYAADAAAIABAAAMAABgAAAAAwAAGAAAwAAAAAYAADAAAIABAAAMAABgAAAAAwAABgAAMAAAgAEAAAwAAGAAAAADAAAYAADAAAAABgAAMAAAgAEAAAwAAGAAAAADAAAYAADAAAAABgAADAAAYAAAAAMAABgAAMAAAAAGAAAwAACAAQAADAAAYAAAAAMAABgAAMAAAAAGAAAwAACAAQAADAAAGAAJAMAAAAAGAAAwAACAAQAADAAAYAAAAAMAABgAAMAAAAAGAAAwAACAAQAADAAAYAAAAAMAABgAAMAAAIABAAAMAABgAAAAAwAAGAAAwAAAAAYAADAAAIABAAAMAABgAAAAAwAAGAAAwAAAAAYAADAAAIABAAADAAAYAADAAAAABgAAMAAAgAEAAAwAAGAAAAADAAAYAADAAAAABgAAMAAAgAEAAAwAAGAAAAADAAAGAAAwAACAAQAADAAAYAAAAAMAABgAAMAAAAAGAAAwAACAAQAADAAAYAAAAAMAABgAAMAAAAAGAAAMAABgAAAAAwAAGAAAwAAAAAYAADAAAIABAAAMAABgAAAAAwAAGAAA4M4KMACk+Ab9gmJWwQAAAABJRU5ErkJggg==",
+      scheduler: "DDIM",
+      num_inference_steps: 25,
+      guidance_scale: 7.5,
+      strength: 1,
+      seed: 17123564234,
+      img_width: 512,
+      img_height: 512,
+    };
+
+    try {
+      const response = await axios.post(url, data, {
+        headers: { "x-api-key": api_key },
+        responseType: "arraybuffer",
+      });
+
+      const blob = new Blob([response.data], { type: "image/jpeg" });
+      const imgUrl = URL.createObjectURL(blob);
+
+      setGeneratedMemories((prevGeneratedMemories) => [
+        ...prevGeneratedMemories,
+        imgUrl,
+      ]);
+    } catch (error) {
+      console.error("Error:", (error as any).response.data);
+    }
+  };
+
+  useEffect(() => {
+    console.log(generatedMemories);
+  }, [generatedMemories]);
 
   return (
     <>
@@ -249,6 +321,19 @@ const landingPage = () => {
             </div>
           </form>
         )}
+      </section>
+      <section>
+        <h2>Generated:</h2>
+        {generatedMemories.length > 0 &&
+          generatedMemories.map((memory, index) => (
+            <img
+              key={index}
+              src={memory}
+              alt="memory"
+              width={512}
+              height={512}
+            />
+          ))}
       </section>
     </>
   );

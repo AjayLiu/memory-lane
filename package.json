@@ -7,6 +7,7 @@
   },
   "dependencies": {
     "@hello-pangea/dnd": "^16.5.0",
+    "axios": "^1.6.7",
     "compressorjs": "^1.2.1",
     "firebase": "^9.13.0",
     "next": "latest",
